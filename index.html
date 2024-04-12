@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Puja Form</title>
+</head>
+
+<body>
+    <!-- Buttons for language translation -->
+    <button onclick="translatePage('gu')">Translate to Gujarati</button>
+    <button onclick="translatePage('hi')">Translate to Hindi</button>
+
+    <h2>Puja Details Form</h2>
+
+    <div id="puja_form">
+        <label for="name">Name:</label><br>
+        <input type="text" id="name" name="name" required><br>
+
+        <label for="location">Location:</label><br>
+        <input type="text" id="location" name="location" required><br>
+
+        <label for="occasion">Occasion:</label><br>
+        <input type="text" id="occasion" name="occasion" required><br>
+    </div>
+
+    <h3>Fetch Data:</h3>
+    <button onclick="fetchData('importance')">Importance</button>
+    <button onclick="fetchData('steps')">Steps</button>
+    <button onclick="fetchData('materials_needed')">Materials Needed</button>
+    <button onclick="fetchData('all')">All</button>
+
+    <div id="dataDisplay"></div>
+
+    <script src="https://www.gstatic.com/firebasejs/8.0.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.0.0/firebase-database.js"></script>
+
+
+
+    <script>
+        // Your web app's Firebase configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyD9mdE6_4JIcxJp9VGCsGObcSDGrmM1jDE",
+            authDomain: "puja-16a8f.firebaseapp.com",
+            databaseURL: "https://puja-16a8f-default-rtdb.firebaseio.com",
+            projectId: "puja-16a8f",
+            storageBucket: "puja-16a8f.appspot.com",
+            messagingSenderId: "587357055899",
+            appId: "1:587357055899:web:61a242f83b52dc512bcf3e"
+        };
+
+        // Initialize Firebase
+        firebase.initializeApp(firebaseConfig);
+        const database = firebase.database();
+
+        function fetchData(detailType) {
+            const occasion = document.getElementById('occasion').value.trim();
+            if (!occasion) {
+                alert('Please enter an occasion to fetch data.');
+                return;
+            }
+
+            let pujaInfoRef = database.ref('pujaInfo/' + occasion);
+
+            // Remove previously displayed data
+            document.getElementById('dataDisplay').innerHTML = '';
+
+            pujaInfoRef.once('value').then((snapshot) => {
+                const data = snapshot.val();
+                let displayContent = '';
+
+                if (data) {
+                    if (detailType === 'importance' && data.importance) {
+                        displayContent += `<strong>Importance:</strong><br>${data.importance}<br><br>`;
+                    } else if (detailType === 'steps' && data.steps) {
+                        displayContent += `<strong>Steps:</strong><br>${data.steps}<br><br>`;
+                    } else if (detailType === 'materials_needed' && data.materials_needed) {
+                        displayContent += `<strong>Perishable Materials:</strong><br>`;
+                        displayContent += buildMaterialsTable(data.materials_needed.perishable, 'Perishable');
+                        displayContent += `<strong>Non-Perishable Materials:</strong><br>`;
+                        displayContent += buildMaterialsTable(data.materials_needed.non_perishable, 'Non-Perishable');
+                    } else if (detailType === 'all') {
+                        if (data.importance) {
+                            displayContent += `<strong>Importance:</strong><br>${data.importance}<br><br>`;
+                        }
+                        if (data.steps) {
+                            displayContent += `<strong>Steps:</strong><br>${data.steps}<br><br>`;
+                        }
+                        if (data.materials_needed) {
+                            displayContent += `<strong>Perishable Materials:</strong><br>`;
+                            displayContent += buildMaterialsTable(data.materials_needed.perishable, 'Perishable');
+                            displayContent += `<strong>Non-Perishable Materials:</strong><br>`;
+                            displayContent += buildMaterialsTable(data.materials_needed.non_perishable, 'Non-Perishable');
+                        }
+                    } else {
+                        displayContent = 'No data found for the requested type.';
+                    }
+                } else {
+                    displayContent = 'No data found for this occasion.';
+                }
+
+                document.getElementById('dataDisplay').innerHTML = displayContent;
+            }).catch((error) => {
+                console.error("Error fetching data: ", error);
+                document.getElementById('dataDisplay').innerHTML = 'Failed to fetch data.';
+            });
+        }
+
+        function buildMaterialsTable(materials, type) {
+            if (!materials || materials.length === 0) return 'No ' + type + ' materials.<br><br>';
+
+            let tableContent = `<table border="1">
+            <tr>
+              <th>Sr. No.</th>
+              <th>Material</th>
+              <th>Quantity</th>
+              <th>Importance</th>
+            </tr>`;
+
+            materials.forEach((item, index) => {
+                tableContent += `<tr>
+              <td>${index + 1}</td>
+              <td>${item.material || ''}</td>
+              <td>${item.quantity || ''}</td>
+              <td>${item.importance || ''}</td>
+            </tr>`;
+            });
+
+            tableContent += `</table><br>`;
+            return tableContent;
+        }
+
+
+
+
+        // ... Existing fetchData and buildMaterialsTable functions ...
+
+        function translatePage(targetLang) {
+            // Collect text from elements you want to translate
+            const elementsToTranslate = [
+                document.querySelector('h2'), // Title
+                ...document.querySelectorAll('label'), // Labels
+                ...document.querySelectorAll('button') // Buttons
+                // Add other selectors as needed
+            ];
+
+            // Translate all collected elements
+            elementsToTranslate.forEach(element => {
+                const text = element.textContent || element.innerText;
+                translateText(text, 'en', targetLang, translatedText => {
+                    element.textContent = translatedText;
+                });
+            });
+
+            // Translate placeholder text in input elements
+            const inputsToTranslate = document.querySelectorAll('input[type="text"]');
+            inputsToTranslate.forEach(input => {
+                if (input.placeholder.trim() !== '') {
+                    translateText(input.placeholder, 'en', targetLang, translatedText => {
+                        input.placeholder = translatedText;
+                    });
+                }
+            });
+        }
+
+        function translateText(text, sourceLang, targetLang, callback) {
+            const url = "https://libretranslate.de/translate";
+            fetch(url, {
+                method: "POST",
+                body: JSON.stringify({
+                    q: text,
+                    source: sourceLang,
+                    target: targetLang,
+                    format: "text"
+                }),
+                headers: { "Content-Type": "application/json" }
+            })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.translatedText) {
+                        callback(data.translatedText);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error translating text:', error);
+                });
+        }
+
+
+    </script>
+
+</body>
+
+</html>
